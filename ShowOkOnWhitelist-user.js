@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         cas.univ TAG
+// @name         Add OK on whitelisted sites.
 // @namespace    https://heeere.com/userscript
 // @version      0.1
 // @description  fishing prevention
