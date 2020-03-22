@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Add OK on whitelisted sites.
 // @namespace    https://heeere.com/userscript
-// @version      0.1
+// @version      0.2
 // @description  fishing prevention
 // @match        https://cas.univ-st-etienne.fr/*
 // @grant        none
