@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Fine-tune Discordapp
 // @namespace    https://heeere.com/userscript
-// @version      0.1
-// @description  Quickly improve discord (Ctrl+S, custom always-on "aka")
+// @version      0.2
+// @description  Quickly improve discord (Ctrl+S, custom always-on "aka", emoji import across servers)
 // @author       You
 // @match        https://discordapp.com/*
 // @run-at       document-idle
@@ -110,6 +110,65 @@
                 return r
             }
             appendFragment(panel, '<style id="dicordtuneDMStyle">'+r.map(dmCSSRules).join('\n')+'</style>');
+        })
+
+
+        // emoji importer, without nitro
+        function pFileReader(file) {
+            return new Promise((resolve, reject) => {
+                var fr = new FileReader()
+                fr.onload = () => { resolve(fr.result) }
+                fr.readAsDataURL(file)
+            })
+        }
+        async function getBase64FromImage(url) {
+            let a = await fetch(url)
+            let r = await pFileReader(await a.blob())
+            window.r = r
+            return r
+        }
+        async function addEmoji(name, imUrl, then = console.log) {
+            let tok = GM_getValue(TOKEN_KEY, '')
+            if (tok == '') {
+                alert("Need token")
+                return
+            }
+            let guildId = window.location.pathname.replace(/^\/channels\/([^/]*)\/.*$/, '$1')
+            let url = `https://discordapp.com/api/v6/guilds/${guildId}/emojis`
+            let a = await fetch(url, { method: 'POST', mode: 'cors', headers: { Authorization: tok, 'Content-Type': 'application/json' }, body: JSON.stringify({
+                name,
+                image: await getBase64FromImage(imUrl),
+            })
+                                     })
+            let r = await a.text()
+            then(r)
+            return r
+        }
+
+        let kEmojis = '___emojiInterval'
+        let importEmojis = appendFragment(panel, '<br/><button style="border: 1px solid white" class="btn">toggle emoji importer</button>')
+        importEmojis.addEventListener('click', async function() {
+            if (window[kEmojis]) {
+                window.clearInterval(window[kEmojis])
+                window[kEmojis] = null
+                console.log('Cleared '+kEmojis)
+            } else {
+                window[kEmojis] = window.setInterval(() => {
+                    document.querySelectorAll('[class*="emojiItem-"]').forEach(e => {
+                        e.onclick = (ev) => {
+                            let url = e.style['background-image']
+                            url = url.replace(/^url\("(.*)"\)$/, '$1')
+                            let n = document.querySelector('[class*="infoBarEmojiName-"]').textContent.replace(/:/g, '').replace(/~[0-9]+$/g, '')
+                            n = prompt('Emoji Name', n)
+                            if (n != null) {
+                                addEmoji(n, url)
+                                ev.stopPropagation()
+                            }
+                        }
+                    })
+                }, 330)
+                console.log('Setup '+kEmojis)
+            }
         })
     })()
 
