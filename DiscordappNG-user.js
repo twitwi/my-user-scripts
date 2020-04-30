@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fine-tune Discordapp
 // @namespace    https://heeere.com/userscript
-// @version      0.3
+// @version      0.4
 // @description  Quickly improve discord (Ctrl+S, custom always-on "aka", emoji import across servers)
 // @author       You
 // @match        https://discordapp.com/*
@@ -143,14 +143,42 @@
             }
             let guildId = window.location.pathname.replace(/^\/channels\/([^/]*)\/.*$/, '$1')
             let url = `https://discordapp.com/api/v6/guilds/${guildId}/emojis`
+            let image = imUrl
+            if (! image.startsWith('data:')) {
+                image = await getBase64FromImage(image)
+            }
             let a = await fetch(url, { method: 'POST', mode: 'cors', headers: { Authorization: tok, 'Content-Type': 'application/json' }, body: JSON.stringify({
                 name,
-                image: await getBase64FromImage(imUrl),
+                image,
             })
                                      })
             let r = await a.text()
             then(r)
             return r
+        }
+        function drawImageScaled(img, canvas) {
+            var hRatio = canvas.width  / img.width    ;
+            var vRatio = canvas.height / img.height  ;
+            var ratio  = Math.min ( hRatio, vRatio );
+            var centerShift_x = ( canvas.width - img.width*ratio ) / 2;
+            var centerShift_y = ( canvas.height - img.height*ratio ) / 2;
+            let ctx = canvas.getContext('2d')
+            ctx.clearRect(0,0,canvas.width, canvas.height);
+            ctx.drawImage(img, 0,0, img.width, img.height,
+                          centerShift_x,centerShift_y,img.width*ratio, img.height*ratio);
+        }
+        async function addEmojiFromImgElement(name, img) {
+            if (img.crossOrigin != 'anonymous') {
+                await new Promise((resolve) => {
+                    img.addEventListener('load', resolve)
+                    img.crossOrigin = 'anonymous'
+                })
+            }
+            let canvas = document.createElement('canvas')
+            canvas.width = 256
+            canvas.height = 256
+            drawImageScaled(img, canvas)
+            await addEmoji(name, canvas.toDataURL('image/png'))
         }
         let kEmojis = '___emojiInterval'
         let importEmojis = appendFragment(panel, '<br/><button style="border: 1px solid white" class="btn">toggle emoji importer</button>')
@@ -173,6 +201,18 @@
                             }
                         }
                     })
+                    document.querySelectorAll('img[src]').forEach(e => {
+                        e.onclick = (ev) => {
+                            let n = 'TODO'
+                            n = prompt('Emoji Name', n)
+                            if (n != null) {
+                                ev.preventDefault()
+                                ev.stopPropagation()
+                                addEmojiFromImgElement(n, e)
+                            }
+                        }
+                    })
+
                 }, 330)
                 console.log('Setup '+kEmojis)
             }
