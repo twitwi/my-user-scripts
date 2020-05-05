@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Fine-tune Discordapp
 // @namespace    https://heeere.com/userscript
-// @version      0.4
+// @version      0.4.1
 // @description  Quickly improve discord (Ctrl+S, custom always-on "aka", emoji import across servers)
 // @author       You
-// @match        https://discordapp.com/*
+// @match        https://discord.com/*
 // @run-at       document-idle
 // @grant        GM_getValue
 // @grant        GM_setValue
