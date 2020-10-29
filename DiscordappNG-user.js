@@ -257,6 +257,64 @@
 
 */
 
+
+
+        ////////////////////////////////////////
+        // channel image patcher
+        ////////////////////////////////////////
+
+        let imagePatcherConf = appendFragment(panel, `
+<br/>
+<style>
+.PATCHED {
+   font-size: 10px;
+   display: flow;
+   text-align: center;
+}
+.PATCHED b {
+   font-size: 13px;
+   color: red;
+}
+.PATCHED i {
+   font-size: 11px;
+   color: yellow;
+}
+</style>
+<div style="border: 1px solid white; background: #252;">Image patch</div>
+`)
+        imagePatcherConf.onclick = async () => {
+        }
+        let patchWhenWeCan = async () => {
+            let base = (a, b, w='b') => `<${w}>${a}</${w}><br/>${b}`
+            let patches = {
+                '771301295062908929/771301295600435217': base('M2', 'MLDM'),
+                '760241453364150276/771340573897916436': base('M1', 'MLDM'),
+                '756441961778643035/756441961778643041': base('L2', 'SPICHI'),
+                '731142663436501115/731151588558897222': base('L3', 'INFO'),
+                '697426767639740426/697426767639740430': base('L2', 'SPI', 'i'),
+                '753879886191394816/753903485208100914': base('L1', 'MISPIC'),
+            }
+            let detector = document.querySelectorAll('[href="/channels/'+Object.keys(patches)[0]+'"]')
+            console.log(detector)
+            if (detector.length == 0) return await setTimeout(patchWhenWeCan, 1000)
+            for (let k in patches) {
+                document.querySelectorAll('[href="/channels/'+k+'"]').forEach(e => {
+                    e.style.fontSize = null // remove style for non-images
+                    e.onmouseenter = patchWhenWeCan
+                    e.onmouseleave = patchWhenWeCan
+                    e.classList.add('PATCHED')
+                    let repl = patches[k]
+                    if (typeof repl !== 'string') {
+                        repl = repl.join('<br/>')
+                    }
+                    console.log(repl)
+                    e.innerHTML = repl
+                })
+            }
+            return await setTimeout(patchWhenWeCan, 2000)
+        }
+        patchWhenWeCan()
+        
     })()
 
 
