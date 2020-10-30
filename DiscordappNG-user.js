@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fine-tune Discordapp
 // @namespace    https://heeere.com/userscript
-// @version      0.4.2
+// @version      0.4.3
 // @description  Quickly improve discord (Ctrl+S, custom always-on "aka", emoji import across servers)
 // @author       You
 // @match        https://discord.com/*
@@ -259,6 +259,9 @@
 
 
 
+
+
+        
         ////////////////////////////////////////
         // channel image patcher
         ////////////////////////////////////////
@@ -267,56 +270,82 @@
 <br/>
 <style>
 .PATCHED {
-   font-size: 10px;
+   font-size: 0.6rem;
    display: flow;
    text-align: center;
 }
+.PATCHED img {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 50%;
+}
 .PATCHED b {
-   font-size: 13px;
+   font-size: 0.85rem;
    color: red;
 }
 .PATCHED i {
    font-size: 11px;
    color: yellow;
 }
+.PATCHED span {
+   position: absolute;
+   left: 0;
+   bottom: 0;
+   width: 50%;
+   font-size: 1.5rem;
+}
 </style>
 <div style="border: 1px solid white; background: #252;">Image patch</div>
 `)
+        function timeout(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
         imagePatcherConf.onclick = async () => {
         }
-        let patchWhenWeCan = async () => {
-            let base = (a, b, w='b') => `<${w}>${a}</${w}><br/>${b}`
+        let patchWhenWeCan = async (continuous) => {
+            //console.log('patching')
+            let base = (a, b, {w='b',emo=''}={}) => `<${w}>${a}</${w}><br/>${b}<span>${emo}</span>`
             let patches = {
-                '771301295062908929/771301295600435217': base('M2', 'MLDM'),
-                '760241453364150276/771340573897916436': base('M1', 'MLDM'),
-                '756441961778643035/756441961778643041': base('L2', 'SPICHI'),
-                '731142663436501115/731151588558897222': base('L3', 'INFO'),
-                '697426767639740426/697426767639740430': base('L2', 'SPI', 'i'),
-                '753879886191394816/753903485208100914': base('L1', 'MISPIC'),
+                '771301295062908929': base('M2', 'MLDM'),
+                '760241453364150276': base('M1', 'MLDM'),
+                '748658373540577353': base('M1', 'DSC', {emo:'🦔'}),
+                '756441961778643035': base('L2', 'SPICHI'),
+                '731142663436501115': base('L3', 'INFO', {emo:'🦡'}),
+                '697426767639740426': base('L2', 'SPI', {w: 'i'}),
+                '753879886191394816': base('L1', 'MISPIC'),
             }
-            let detector = document.querySelectorAll('[href="/channels/'+Object.keys(patches)[0]+'"]')
-            console.log(detector)
-            if (detector.length == 0) return await setTimeout(patchWhenWeCan, 1000)
+            let detector = document.querySelectorAll('[href^="/channels/'+Object.keys(patches)[0]+'"]')
+            //console.log(detector)
+            if (detector.length === 0) {
+                await timeout(500)
+                return await patchWhenWeCan(continuous)
+            }
             for (let k in patches) {
-                document.querySelectorAll('[href="/channels/'+k+'"]').forEach(e => {
+                document.querySelectorAll('[href^="/channels/'+k+'"]').forEach(e => {
+                    if (e.classList.contains('PATCHED')) return
+                    let img = e.querySelector('img')
+                    let src = img ? img.src : null
                     e.style.fontSize = null // remove style for non-images
-                    e.onmouseenter = patchWhenWeCan
-                    e.onmouseleave = patchWhenWeCan
+                    e.addEventListener('click', () => timeout(1).then(() => patchWhenWeCan(false)))
+                    e.addEventListener('mouseenter', () => patchWhenWeCan(false))
+                    e.addEventListener('mouseleave', () => patchWhenWeCan(false))
                     e.classList.add('PATCHED')
                     let repl = patches[k]
                     if (typeof repl !== 'string') {
                         repl = repl.join('<br/>')
                     }
-                    console.log(repl)
+                    if (src) repl += `<img src="${src}"/>`
                     e.innerHTML = repl
                 })
             }
-            return await setTimeout(patchWhenWeCan, 2000)
+            if (continuous) {
+                await timeout(2000)
+                return await patchWhenWeCan(true)
+            }
         }
-        patchWhenWeCan()
-        
+        patchWhenWeCan(true)
     })()
-
 
 
 })();
