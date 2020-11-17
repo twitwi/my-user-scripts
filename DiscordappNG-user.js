@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Fine-tune Discordapp
 // @namespace    https://heeere.com/userscript
-// @version      0.4.3
+// @version      0.4.4
 // @description  Quickly improve discord (Ctrl+S, custom always-on "aka", emoji import across servers)
 // @author       You
 // @match        https://discord.com/*
@@ -315,14 +315,14 @@
                 '697426767639740426': base('L2', 'SPI', {w: 'i'}),
                 '753879886191394816': base('L1', 'MISPIC'),
             }
-            let detector = document.querySelectorAll('[href^="/channels/'+Object.keys(patches)[0]+'"]')
+            let detector = document.querySelectorAll('div[href^="/channels/'+Object.keys(patches)[0]+'"]')
             //console.log(detector)
             if (detector.length === 0) {
                 await timeout(500)
                 return await patchWhenWeCan(continuous)
             }
             for (let k in patches) {
-                document.querySelectorAll('[href^="/channels/'+k+'"]').forEach(e => {
+                document.querySelectorAll('div[href^="/channels/'+k+'"]').forEach(e => {
                     if (e.classList.contains('PATCHED')) return
                     let img = e.querySelector('img')
                     let src = img ? img.src : null
