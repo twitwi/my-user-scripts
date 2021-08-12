@@ -67,7 +67,7 @@
     setInterval(enrichAllLinks, 1000);
 })();
 
-let BASH = `
+/*
 #!/bin/bash
 
 set -e
@@ -96,7 +96,8 @@ echo
 echo 'python3 cors-http-server.py'
 `
 
-let PYTHON = `
+
+
 #!/usr/bin/env python
 
 # Usage: python cors_http_server.py <port>
@@ -118,5 +119,10 @@ class CORSRequestHandler (SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     test(CORSRequestHandler, HTTPServer)
-`
+
+*/
+
+
+
+
 
