@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Youtube local cache
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.2
 // @description  Use a local web server to server pre-downloaded youtube videos and propose them
 // @author       twitwi
 // @match        https://www.youtube.com/*
@@ -25,33 +25,71 @@
 `
         document.head.append(sty)
     };
+    let blurYtLogo = () => {
+        let sty = document.createElement('style')
+        sty.innerText = `
+#logo {
+  filter: blur(5px);
+  transition: filter 1s linear;
+}
+`
+        document.head.append(sty)
+    };
+
+    let c = (n, att={}, sty={}, events={}, parent=null) => { let r = document.createElement(n) ; for (let i in att) r.setAttribute(i, att[i]) ; for (let i in sty) r.style[i] = sty[i] ; for (let i in events) r.addEventListener(i, events[i]) ; if (parent) parent.append(r) ; return r}
+
 
     let asyncLoadIndex = async () => {
-        let req = await fetch(SV+'index.json', {
-            mode: 'cors',
-        })
-        let o = await req.json()
-        for (let k in o) {
-            let v = o[k]
-            if (!(v in desc)) {
-                desc[v] = []
+        try {
+            let req = await fetch(SV+'index.json', {
+                mode: 'cors',
+                cache: 'no-cache',
+            })
+            let o = await req.json()
+            for (let k in o) {
+                let v = o[k]
+                if (!(v in desc)) {
+                    desc[v] = []
+                }
+                desc[v].push(k)
             }
-            desc[v].push(k)
+            modifyYtLogo() // to show it loaded
+            console.log(desc)
+        } catch (e) {
+            blurYtLogo()
         }
-        modifyYtLogo() // to show it loaded
-        console.log(desc)
     };
     asyncLoadIndex()
 
+    let disabled = false
+    document.addEventListener('keydown', (ev) => {
+        console.log(ev)
+        if (ev.key === 'Escape') {
+            disabled = true
+            setTimeout(() => { disabled = false; }, 1500)
+        }
+    })
+
     let interceptLink = (ev, a) => {
-        console.log(a.href, a.enriched)
+        if (disabled) return
         let vidid = new URL(a.href).searchParams.get('v')
         if (!(vidid in desc)) return true
         ev.preventDefault()
         ev.stopPropagation()
-        a.href = SV+desc[vidid][0]
-        console.log(a.href)
-        window.location = a.href
+        let url = SV+desc[vidid][0]
+        //window.location = url // navigate brutally
+
+        let cont = c('div',
+                     {},
+                     {width: '100vw', height: '100vh', position: 'fixed', background: '#000000AF', padding: '0px', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center'},
+                     {click(ev) {if (ev.target.parentElement) ev.target.parentElement.removeChild(ev.target)}},
+                     document.body)
+        let vid = c('video',
+                    {controls: true, autoplay: true, src: url},
+                    {position: 'absolute', background: '#222222', maxWidth: '100%', maxHeight: '90%', minHeight: '90%', minWidth: '100%', boxSizing: 'border-box', },
+                    {mousemove(ev) {vid.controls = true}, ended(ev) {if (cont.parentElement) cont.parentElement.removeChild(cont)}},
+                    cont)
+        vid.volume = 0.35 // my custom usual volume
         return false
     };
 
@@ -68,6 +106,8 @@
 })();
 
 /*
+#########################################################################################################
+
 #!/bin/bash
 
 set -e
@@ -93,8 +133,10 @@ echo '}' >> "$index"
 echo maybe run:
 echo
 #echo 'PORT=7897 fff links/index.json'
-echo 'python3 cors-http-server.py'
-`
+echo '(cd links/ && python3 ../cors-http-server.py)'
+
+
+#########################################################################################################
 
 
 
