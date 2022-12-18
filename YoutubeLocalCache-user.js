@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Youtube local cache
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  Use a local web server to server pre-downloaded youtube videos and propose them
 // @author       twitwi
 // @match        https://www.youtube.com/*
@@ -100,6 +100,29 @@
             a.enriched = true
             a.addEventListener('click', (ev) => interceptLink(ev, a))
         })
+        document.querySelectorAll('ytd-thumbnail').forEach(th => {
+            if (th.enriched) return
+            th.enriched = true
+            let dl = document.createElement('span')
+            dl.textContent = '📥'
+            dl.style.overflow = 'visible'
+            dl.style.width = '0'
+            dl.style.zIndex = '10'
+            dl.addEventListener('click', async () => {
+                let id = th.__data.data.videoId
+                await fetch(`${SV}___ytdl`, {
+                    method: 'POST',
+                    body: JSON.stringify({ id }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                    .then(response => response.json())
+                    .then(data => console.log(data))
+                    .then(asyncLoadIndex)
+            })
+            th.parentNode.insertBefore(dl, th)
+        })
     };
 
     setInterval(enrichAllLinks, 1000);
@@ -117,8 +140,8 @@ mkdir -p links/
 cd links/
 echo '{' > "$index"
 
-for i in ../*-???????????.* ; do
-    link=$(echo "$i" |sed 's@^.*-\(...........[.][^.]*\)$@\1@g')
+for i in ../*'['???????????'].'* ; do
+    link=$(echo "$i" |sed 's@^.*\[\(...........\)\][.]\([^.]*\)$@\1.\2@g')
     vidid=$(echo "$link" |sed 's@[.][^.]*$@@g')
     test -f "$link" || ln -s "$i" "./$link"
     echo "\"$link\": \"$vidid\"," >> "$index"
@@ -133,10 +156,14 @@ echo '}' >> "$index"
 echo maybe run:
 echo
 #echo 'PORT=7897 fff links/index.json'
-echo '(cd links/ && python3 ../cors-http-server.py)'
+echo '(cd links/ && python3 ../cors_http_server.py)'
+
+
+
 
 
 #########################################################################################################
+
 
 
 
@@ -144,27 +171,48 @@ echo '(cd links/ && python3 ../cors-http-server.py)'
 
 # Usage: python cors_http_server.py <port>
 
-try:
-    # try to use Python 3
-    from http.server import HTTPServer, SimpleHTTPRequestHandler, test as test_orig
-    import sys
-    def test (*args):
-        test_orig(*args, port=int(sys.argv[1]) if len(sys.argv) > 1 else 7897, bind="0.0.0.0")
-except ImportError: # fall back to Python 2
-    from BaseHTTPServer import HTTPServer, test
-    from SimpleHTTPServer import SimpleHTTPRequestHandler
+from http.server import HTTPServer, SimpleHTTPRequestHandler, test as test_orig
+import subprocess
+import json
+import sys
+def test (*args):
+    test_orig(*args, port=int(sys.argv[1]) if len(sys.argv) > 1 else 7897, bind="0.0.0.0")
 
 class CORSRequestHandler (SimpleHTTPRequestHandler):
+    def do_OPTIONS(self):
+        self.send_response(200, "ok")
+        self.end_headers()
+    def do_POST(self):
+        if self.path == '/___ytdl':
+            length = int(self.headers['Content-Length'])
+            data = self.rfile.read(length)
+            data = json.loads(data)
+            ytid = data['id']
+            with open('index.json') as f:
+                existing = json.load(f)
+            if ytid in existing.values():
+                print(f'Received id: {ytid} -> already got it')
+                msg = 'Already'
+                log = ''
+            else:
+                print(f'Received id: {ytid} -> downloading...')
+                msg = 'Download...'
+                log = subprocess.check_output(['yt-dlp', ytid], cwd='..').decode('utf-8')
+                subprocess.call(['./make-links.sh'], cwd='..')
+            # Send a response
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(json.dumps(dict(msg=msg, log=log)).encode('utf-8'))
+        else:
+            super().do_POST()
     def end_headers (self):
         self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header("Access-Control-Allow-Headers", "X-Requested-With, Content-Type")
         SimpleHTTPRequestHandler.end_headers(self)
 
 if __name__ == '__main__':
     test(CORSRequestHandler, HTTPServer)
 
+
 */
-
-
-
-
-
