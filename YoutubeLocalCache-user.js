@@ -1,13 +1,15 @@
 // ==UserScript==
 // @name         Youtube local cache
 // @namespace    http://tampermonkey.net/
-// @version      0.3
+// @version      0.4
+// @require      https://unpkg.com/vue@3.2.45/dist/vue.global.js#sha256=ae2264d3dd08ed068d0709a8b8070644075df455aaca7858a7e3cccd299380df
 // @description  Use a local web server to server pre-downloaded youtube videos and propose them
 // @author       twitwi
 // @match        https://www.youtube.com/*
 // @icon         https://www.google.com/s2/favicons?domain=youtube.com
 // @grant        none
 // ==/UserScript==
+
 
 (function() {
     'use strict';
@@ -35,6 +37,14 @@
 `
         document.head.append(sty)
     };
+    let appStyle = () => {
+        let sty = document.createElement('style')
+        sty.innerText = `
+#start>.app {
+}
+`
+        document.head.append(sty)
+    };
 
     let c = (n, att={}, sty={}, events={}, parent=null) => { let r = document.createElement(n) ; for (let i in att) r.setAttribute(i, att[i]) ; for (let i in sty) r.style[i] = sty[i] ; for (let i in events) r.addEventListener(i, events[i]) ; if (parent) parent.append(r) ; return r}
 
@@ -54,12 +64,14 @@
                 desc[v].push(k)
             }
             modifyYtLogo() // to show it loaded
+            appStyle()
             console.log(desc)
         } catch (e) {
             blurYtLogo()
         }
     };
     asyncLoadIndex()
+    window.asyncLoadIndex = asyncLoadIndex
 
     let disabled = false
     document.addEventListener('keydown', (ev) => {
@@ -93,7 +105,53 @@
         return false
     };
 
+    window.Vue = Vue;
     let enrichAllLinks = () => {
+        // custom list app
+        if (document.querySelector('#start>.localcache-list') === null) {
+            let start = document.querySelector('#start')
+            let li = c('span',
+                       {class: 'localcache-list', },
+                       {},
+                       {click() {
+                           let vueapp = Vue.createApp({
+                               template: `
+                               <div style="position: fixed; left: 0; top: 50px; bottom: 0; width: 50%; background: chartreuse; zIndex: 10000; font-size: 20px;">
+                               <h1>
+                                 <span @click="closeMe">Locally Cached (click to close)</span>
+                                 <button @click="n--">  -  </button>
+                                 <button @click="n++">  +  </button> ({{n}} per line)
+                                 <div @click="closeMe" style="float: right">×</div>
+                               </h1>
+                               <div style="height: calc(100% - 50px); overflow-y: scroll;">
+                                 <a v-for="id in videoIds"
+                                    :href="'/watch?v='+id"
+                                    :style="{display: 'inline-block', width: (100/n)+'%', 'box-sizing': 'border-box'}">
+                                   <img :src="'https://i.ytimg.com/vi/'+id+'/hqdefault.jpg'" style="width: 100%" />
+                                 </a>
+                               </div>
+                               </div>
+                               `,
+                               data: () => ({
+                                   videoIds: Object.keys(desc),
+                                   n: 5,
+                               }),
+                               methods: {
+                                   closeMe() {
+                                       vueapp.unmount()
+                                   },
+                               },
+                           })
+                           vueapp.mount(app)
+                       }},
+                      start)
+            let app = c('div',
+                        {class: 'app'},
+                        {overflow: 'visible'}, {},
+                        document.body)
+            li.textContent = '🪣'
+        }
+        // actual link enriching
         document.querySelectorAll('a[href^="https://www.youtube.com/watch?v="], a[href^="/watch?v="]').forEach(a => {
             // process each link only once and for all
             if (a.enriched) return
